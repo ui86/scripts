@@ -157,6 +157,12 @@ cleanup() {
 echo -e "${BLUE}=== CertD 容器授权文件替换工具 ===${NC}"
 echo ""
 
+# 检查一下docker是否存在
+if ! command -v docker >/dev/null 2>&1; then
+    echo -e "${RED}错误: 未安装docker，请先安装docker${NC}"
+    exit 1
+fi
+
 # 获取容器名称
 CONTAINER_NAME=$(get_container_name "$@")
 

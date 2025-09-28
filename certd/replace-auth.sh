@@ -45,7 +45,8 @@ get_container_name() {
     
     # 检查容器是否存在
     if check_container_exists "$container_name"; then
-        echo -e "${GREEN}找到容器: $container_name${NC}"
+        # 将状态信息输出到stderr，避免命令替换时被捕获
+        echo -e "${GREEN}找到容器: $container_name${NC}" >&2
         echo "$container_name"
         return 0
     fi
@@ -74,7 +75,8 @@ get_container_name() {
         
         # 检查容器是否存在
         if check_container_exists "$user_input"; then
-            echo -e "${GREEN}找到容器: $user_input${NC}"
+            # 将状态信息输出到stderr，避免命令替换时被捕获
+            echo -e "${GREEN}找到容器: $user_input${NC}" >&2
             echo "$user_input"
             return 0
         else

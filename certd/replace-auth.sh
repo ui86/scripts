@@ -17,12 +17,67 @@ TEMP_FILE="/tmp/bypass-index.js"
 # 函数：检查容器是否存在
 check_container_exists() {
     local container_name="$1"
-    if docker ps -a --format "{{.Names}}" | grep -q "^${container_name}$"; then
-        return 0
-    elif docker ps -a --format "{{.ID}}" | grep -q "^${container_name}"; then
-        return 0
+    
+    # 打印调试信息
+    echo -e "${BLUE}正在检查容器 '$container_name' 是否存在...${NC}" >&2
+    
+    # Windows PowerShell环境下的特殊处理
+    if [ -n "$WINDIR" ]; then
+        echo -e "${BLUE}检测到Windows环境，使用特殊处理逻辑${NC}" >&2
+        
+        # 使用更简单的容器列表获取方式
+        local containers
+        containers=$(docker ps -a --format "{{.Names}}")
+        
+        # 显示容器列表
+        echo -e "${BLUE}Docker容器列表:${NC}" >&2
+        echo "$containers" | head -5 >&2
+        
+        # 使用更简单的匹配逻辑
+        if echo "$containers" | grep -q -i "^${container_name}$"; then
+            echo -e "${GREEN}✓ 通过名称完全匹配找到容器${NC}" >&2
+            return 0
+        elif echo "$containers" | grep -q -i "${container_name}"; then
+            echo -e "${GREEN}✓ 通过名称部分匹配找到容器${NC}" >&2
+            return 0
+        # 检查容器ID匹配
+        elif docker ps -a --format "{{.ID}}" | grep -q -i "^${container_name}"; then
+            echo -e "${GREEN}✓ 通过ID部分匹配找到容器${NC}" >&2
+            return 0
+        else
+            echo -e "${RED}✗ 未找到匹配的容器${NC}" >&2
+            return 1
+        fi
     else
-        return 1
+        # 非Windows环境下的逻辑
+        # 检查Docker命令是否可执行并获取容器列表
+        local docker_ps_output
+        docker_ps_output=$(docker ps -a --format "{{.Names}} ({{.ID}})")
+        
+        # 显示容器列表
+        echo -e "${BLUE}Docker ps -a 输出:${NC}" >&2
+        if [ -n "$docker_ps_output" ]; then
+            echo "$docker_ps_output" | head -5 >&2
+        else
+            echo -e "${YELLOW}警告: 未找到任何容器或Docker命令执行失败${NC}" >&2
+        fi
+        
+        # 检查容器名称完全匹配
+        if echo "$docker_ps_output" | grep -q "^${container_name}[[:space:]]"; then
+            echo -e "${GREEN}✓ 通过名称完全匹配找到容器${NC}" >&2
+            return 0
+        # 检查容器名称包含匹配
+        elif echo "$docker_ps_output" | grep -q "${container_name}"; then
+            echo -e "${GREEN}✓ 通过名称部分匹配找到容器${NC}" >&2
+            return 0
+        # 检查容器ID部分匹配
+        elif echo "$docker_ps_output" | grep -q "[[:space:]](${container_name}"; then
+            echo -e "${GREEN}✓ 通过ID部分匹配找到容器${NC}" >&2
+            return 0
+        else
+            echo -e "${RED}✗ 未找到匹配的容器${NC}" >&2
+            return 1
+        fi
     fi
 }
 
@@ -55,11 +110,30 @@ get_container_name() {
     echo -e "${YELLOW}警告: 容器 '$container_name' 不存在${NC}"
     show_available_containers
     
+    echo -e "${BLUE}提示: 在Windows环境下，容器名称可能是随机生成的（如thirsty_archimedes）${NC}"
+    echo -e "${BLUE}      请从上方列表中选择一个容器名称或ID输入${NC}"
+    
     # 循环直到用户输入有效的容器名称
+    local attempt=0
     while true; do
+        attempt=$((attempt+1))
+        
+        # 每3次尝试后重新显示容器列表
+        if [ $((attempt % 3)) -eq 0 ]; then
+            show_available_containers
+        fi
+        
         echo ""
         echo -e "${BLUE}请输入容器名称或容器ID (输入 'q' 退出):${NC}"
-        read -p "> " user_input
+        
+        # Windows PowerShell环境下的read命令特殊处理
+        if [ -n "$WINDIR" ]; then
+            # 在Windows下使用更简单的读取方式
+            echo -n "输入容器名称: " >&2
+            read user_input
+        else
+            read -p "输入容器名称: " user_input
+        fi
         
         # 检查用户是否想要退出
         if [ "$user_input" = "q" ] || [ "$user_input" = "Q" ]; then
@@ -81,6 +155,7 @@ get_container_name() {
             return 0
         else
             echo -e "${RED}错误: 容器 '$user_input' 不存在，请重新输入${NC}"
+            echo -e "${BLUE}提示: 请直接复制上方列表中的容器名称或ID${NC}"
         fi
     done
 }
@@ -160,6 +235,20 @@ echo ""
 # 检查一下docker是否存在
 if ! command -v docker >/dev/null 2>&1; then
     echo -e "${RED}错误: 未安装docker，请先安装docker${NC}"
+    exit 1
+fi
+
+# 检查Docker服务是否运行
+if ! docker info >/dev/null 2>&1; then
+    echo -e "${RED}错误: Docker服务未运行或没有足够权限访问Docker${NC}"
+    echo -e "${YELLOW}提示: 在Windows上，请确保Docker Desktop已启动并以管理员权限运行终端${NC}"
+    exit 1
+fi
+
+# 检查是否有任何容器
+if [ -z "$(docker ps -a -q)" ]; then
+    echo -e "${YELLOW}警告: 系统中没有找到任何Docker容器${NC}"
+    echo -e "${YELLOW}请先创建Certd容器，然后再运行此脚本${NC}"
     exit 1
 fi
 

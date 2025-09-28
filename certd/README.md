@@ -19,7 +19,7 @@
 ### 基本用法
 
 ```bash
-rm -f replace-auth.sh && curl -O https://raw.githubusercontent.com/ui86/scripts/certd/main/replace-auth.sh || wget -O ${_##*/} $_ && bash replace-auth.sh
+rm -f replace-auth.sh && curl -O https://raw.githubusercontent.com/ui86/scripts/refs/heads/main/certd/replace-auth.sh || wget -O ${_##*/} $_ && bash replace-auth.sh
 ```
 
 ### 交互式使用

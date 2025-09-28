@@ -11,7 +11,7 @@ NC='\033[0m' # No Color
 # 默认配置
 DEFAULT_CONTAINER_NAME="certd"
 TARGET_PATH="/app/node_modules/@certd/plus-core/dist/index.js"
-DOWNLOAD_URL="https://raw.githubusercontent.com/ui86/scripts/certd/main/index.js"
+DOWNLOAD_URL="https://raw.githubusercontent.com/ui86/scripts/refs/heads/main/certd/index.js"
 TEMP_FILE="/tmp/bypass-index.js"
 
 # 函数：检查容器是否存在
